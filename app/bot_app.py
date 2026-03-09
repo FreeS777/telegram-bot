@@ -101,7 +101,7 @@ def create_bot_app():
         )
     )
 
-    # Потом режимы ожидания текста из меню
+    # Потом режим ожидания URL
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -109,10 +109,11 @@ def create_bot_app():
         )
     )
 
-    # Потом подтверждение кодом
+    # Потом подтверждение кодом:
+    # ловим либо цифры, либо кнопку отмены
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
+            filters.TEXT & ~filters.COMMAND & (filters.Regex(r"^\d{4,6}$") | filters.Regex(r"^❌ Отмена$")),
             confirmation_text_handler,
         )
     )
