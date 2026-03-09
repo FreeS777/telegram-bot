@@ -93,7 +93,7 @@ def create_bot_app():
     # Голос
     app.add_handler(MessageHandler(filters.VOICE, voice_message))
 
-    # Сначала кнопки меню
+    # 1. Сначала кнопки меню
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND & filters.Regex(MENU_BUTTON_PATTERN),
@@ -101,7 +101,17 @@ def create_bot_app():
         )
     )
 
-    # Потом режим ожидания URL
+    # 2. Потом подтверждение кодом
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT
+            & ~filters.COMMAND
+            & (filters.Regex(r"^\d{4,6}$") | filters.Regex(r"^❌ Отмена$")),
+            confirmation_text_handler,
+        )
+    )
+
+    # 3. Потом режим ожидания URL
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -109,16 +119,12 @@ def create_bot_app():
         )
     )
 
-    # Потом подтверждение кодом:
-    # ловим либо цифры, либо кнопку отмены
+    # 4. И только потом обычный чат
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND & (filters.Regex(r"^\d{4,6}$") | filters.Regex(r"^❌ Отмена$")),
-            confirmation_text_handler,
+            filters.TEXT & ~filters.COMMAND,
+            chat_message,
         )
     )
-
-    # И только потом обычный чат
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_message))
 
     return app
