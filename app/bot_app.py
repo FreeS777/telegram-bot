@@ -37,17 +37,22 @@ from app.handlers.menu_handlers import (
     start_with_menu,
     help_with_menu,
     menu_command,
+    hide_menu_command,
     menu_text_handler,
+    awaiting_menu_input_handler,
 )
 
 
 def create_bot_app():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
+    # Основные команды
     app.add_handler(CommandHandler("start", start_with_menu))
     app.add_handler(CommandHandler("help", help_with_menu))
     app.add_handler(CommandHandler("menu", menu_command))
+    app.add_handler(CommandHandler("hide_menu", hide_menu_command))
 
+    # Старые команды — оставляем, чтобы ничего не ломать
     app.add_handler(CommandHandler("clear", clear_command))
     app.add_handler(CommandHandler("voice_on", voice_on_command))
     app.add_handler(CommandHandler("voice_off", voice_off_command))
@@ -76,8 +81,18 @@ def create_bot_app():
     app.add_handler(CommandHandler("win_open_url", win_open_url))
     app.add_handler(CommandHandler("win_unlock_screen", win_unlock_screen))
 
+    # Голос
     app.add_handler(MessageHandler(filters.VOICE, voice_message))
 
+    # Режимы ожидания ввода из меню должны ловиться раньше всего текстового
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            awaiting_menu_input_handler,
+        )
+    )
+
+    # Кнопки меню
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND & filters.Regex(MENU_BUTTON_PATTERN),
@@ -85,6 +100,7 @@ def create_bot_app():
         )
     )
 
+    # Обычный текстовый чат
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_message))
 
     return app
