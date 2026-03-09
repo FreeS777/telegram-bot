@@ -1,6 +1,6 @@
 import re
 
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import ContextTypes
 
 from app.security.auth import is_allowed
@@ -11,7 +11,6 @@ from app.handlers.command_handlers import (
     voice_off_command,
     ping,
     ip_command,
-    search,
     uptime_command,
     disk_command,
     ram_command,
@@ -24,163 +23,64 @@ from app.handlers.command_handlers import (
     net_command,
     whoami_command,
     win_status_command,
-    win_lock_command,
-    win_logout_command,
-    win_shutdown_command,
-    win_reboot_command,
     win_screenshot_command,
     win_open_url,
     win_unlock_screen,
 )
-
-
-BTN_MAIN_SERVER = "🖥 Сервер"
-BTN_MAIN_WINDOWS = "🪟 Windows"
-BTN_MAIN_VOICE = "🎤 Голос"
-BTN_MAIN_HELP = "ℹ️ Помощь"
-BTN_MAIN_CLEAR = "🧠 Очистить память"
-BTN_HIDE_MENU = "🙈 Скрыть меню"
-
-BTN_BACK = "🏠 Главное меню"
-BTN_CANCEL = "❌ Отмена"
-
-BTN_SERVER_SUMMARY = "📊 Сводка"
-BTN_SERVER_UPTIME = "⏱ Uptime"
-BTN_SERVER_DISK = "💾 Disk"
-BTN_SERVER_RAM = "🧠 RAM"
-BTN_SERVER_TOP = "🔥 Top"
-BTN_SERVER_SERVICES = "🧩 Services"
-BTN_SERVER_DOCKER = "🐳 Docker"
-BTN_SERVER_NGINX = "🌐 Nginx"
-BTN_SERVER_LOGS = "📜 Logs"
-BTN_SERVER_NET = "🌍 Net"
-BTN_SERVER_WHOAMI = "🙋 Whoami"
-BTN_SERVER_IP = "🌐 Внешний IP"
-BTN_SERVER_PING = "🏓 Ping"
-
-BTN_WIN_STATUS = "✅ Статус"
-BTN_WIN_LOCK = "🔒 Lock"
-BTN_WIN_UNLOCK = "🔓 Unlock"
-BTN_WIN_LOGOUT = "🚪 Logout"
-BTN_WIN_SCREENSHOT = "📷 Скриншот"
-BTN_WIN_SHUTDOWN = "🔌 Shutdown"
-BTN_WIN_REBOOT = "🔄 Reboot"
-BTN_WIN_OPEN_URL = "🌍 Open URL"
-
-BTN_VOICE_ON = "🟢 Голос вкл"
-BTN_VOICE_OFF = "🔴 Голос выкл"
-
-MENU_BUTTONS = [
-    BTN_MAIN_SERVER,
-    BTN_MAIN_WINDOWS,
-    BTN_MAIN_VOICE,
-    BTN_MAIN_HELP,
-    BTN_MAIN_CLEAR,
-    BTN_HIDE_MENU,
+from app.handlers.confirm_handlers import (
+    cancel_pending_action,
+    request_server_reboot_confirmation,
+    request_win_lock_confirmation,
+    request_win_logout_confirmation,
+    request_win_shutdown_confirmation,
+    request_win_reboot_confirmation,
+)
+from app.keyboards.menu_keyboards import (
     BTN_BACK,
     BTN_CANCEL,
-    BTN_SERVER_SUMMARY,
-    BTN_SERVER_UPTIME,
+    BTN_HIDE_MENU,
+    BTN_MAIN_CLEAR,
+    BTN_MAIN_HELP,
+    BTN_MAIN_SERVER,
+    BTN_MAIN_VOICE,
+    BTN_MAIN_WINDOWS,
     BTN_SERVER_DISK,
-    BTN_SERVER_RAM,
-    BTN_SERVER_TOP,
-    BTN_SERVER_SERVICES,
     BTN_SERVER_DOCKER,
-    BTN_SERVER_NGINX,
+    BTN_SERVER_IP,
     BTN_SERVER_LOGS,
     BTN_SERVER_NET,
-    BTN_SERVER_WHOAMI,
-    BTN_SERVER_IP,
+    BTN_SERVER_NGINX,
     BTN_SERVER_PING,
-    BTN_WIN_STATUS,
+    BTN_SERVER_RAM,
+    BTN_SERVER_REBOOT,
+    BTN_SERVER_SERVICES,
+    BTN_SERVER_SUMMARY,
+    BTN_SERVER_TOP,
+    BTN_SERVER_UPTIME,
+    BTN_SERVER_WHOAMI,
+    BTN_VOICE_OFF,
+    BTN_VOICE_ON,
     BTN_WIN_LOCK,
-    BTN_WIN_UNLOCK,
     BTN_WIN_LOGOUT,
+    BTN_WIN_OPEN_URL,
+    BTN_WIN_REBOOT,
     BTN_WIN_SCREENSHOT,
     BTN_WIN_SHUTDOWN,
-    BTN_WIN_REBOOT,
-    BTN_WIN_OPEN_URL,
-    BTN_VOICE_ON,
-    BTN_VOICE_OFF,
-]
+    BTN_WIN_STATUS,
+    BTN_WIN_UNLOCK,
+    get_cancel_keyboard,
+    get_main_menu_keyboard,
+    get_server_menu_keyboard,
+    get_voice_menu_keyboard,
+    get_windows_menu_keyboard,
+)
+from app.services.confirm_service import (
+    clear_pending_confirmation,
+    has_pending_confirmation,
+)
 
-MENU_BUTTON_PATTERN = r"^(%s)$" % "|".join(re.escape(button) for button in MENU_BUTTONS)
 
 AWAITING_WIN_URL_KEY = "awaiting_win_url"
-
-
-def get_main_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        [
-            [BTN_MAIN_SERVER, BTN_MAIN_WINDOWS],
-            [BTN_MAIN_VOICE, BTN_MAIN_HELP],
-            [BTN_MAIN_CLEAR, BTN_HIDE_MENU],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False,
-        selective=True,
-        input_field_placeholder="Выбери раздел меню…",
-    )
-
-
-def get_server_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        [
-            [BTN_SERVER_SUMMARY, BTN_SERVER_PING],
-            [BTN_SERVER_IP, BTN_SERVER_UPTIME],
-            [BTN_SERVER_DISK, BTN_SERVER_RAM],
-            [BTN_SERVER_TOP, BTN_SERVER_SERVICES],
-            [BTN_SERVER_DOCKER, BTN_SERVER_NGINX],
-            [BTN_SERVER_LOGS, BTN_SERVER_NET],
-            [BTN_SERVER_WHOAMI],
-            [BTN_BACK, BTN_HIDE_MENU],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False,
-        selective=True,
-        input_field_placeholder="Раздел: Сервер",
-    )
-
-
-def get_windows_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        [
-            [BTN_WIN_STATUS, BTN_WIN_SCREENSHOT],
-            [BTN_WIN_LOCK, BTN_WIN_UNLOCK],
-            [BTN_WIN_LOGOUT],
-            [BTN_WIN_SHUTDOWN, BTN_WIN_REBOOT],
-            [BTN_WIN_OPEN_URL],
-            [BTN_BACK, BTN_HIDE_MENU],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False,
-        selective=True,
-        input_field_placeholder="Раздел: Windows",
-    )
-
-
-def get_voice_menu_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        [
-            [BTN_VOICE_ON, BTN_VOICE_OFF],
-            [BTN_MAIN_CLEAR],
-            [BTN_BACK, BTN_HIDE_MENU],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False,
-        selective=True,
-        input_field_placeholder="Раздел: Голос",
-    )
-
-
-def get_cancel_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        [[BTN_CANCEL, BTN_BACK]],
-        resize_keyboard=True,
-        one_time_keyboard=False,
-        selective=True,
-        input_field_placeholder="Жду ссылку…",
-    )
 
 
 def normalize_url(url: str) -> str:
@@ -221,12 +121,17 @@ def clear_awaiting_states(context: ContextTypes.DEFAULT_TYPE) -> None:
     context.user_data.pop(AWAITING_WIN_URL_KEY, None)
 
 
+def clear_transient_states(context: ContextTypes.DEFAULT_TYPE) -> None:
+    clear_awaiting_states(context)
+    clear_pending_confirmation(context)
+
+
 async def start_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_allowed(update):
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     text = (
         "Бот запущен и готов к работе.\n\n"
@@ -251,15 +156,16 @@ async def help_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     text = (
         "Главное управление теперь через кнопки 👇\n\n"
         "Что где лежит:\n"
-        "• 🖥 Сервер — статус, RAM, диск, процессы, docker, nginx, логи\n"
-        "• 🪟 Windows — статус агента, скриншот, lock/logout/shutdown/reboot, open url\n"
+        "• 🖥 Сервер — статус, RAM, диск, процессы, docker, nginx, логи, reboot\n"
+        "• 🪟 Windows — статус агента, скриншот, lock, logout, shutdown, reboot, open url\n"
         "• 🎤 Голос — включить или выключить голосовые ответы\n"
         "• 🧠 Очистить память — сброс истории диалога\n\n"
+        "Опасные действия теперь требуют код подтверждения.\n\n"
         "Старые команды тоже работают.\n"
         "Например:\n"
         "/server\n"
@@ -267,7 +173,8 @@ async def help_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "/ram\n"
         "/win_status\n"
         "/win_screenshot\n"
-        "/win_open_url https://youtube.com\n\n"
+        "/win_open_url https://youtube.com\n"
+        "/confirm 4821\n\n"
         "Для открытия меню в любой момент: /menu"
     )
 
@@ -282,7 +189,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     await update.message.reply_text(
         "Открыла главное меню.",
@@ -295,7 +202,7 @@ async def hide_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     await update.message.reply_text(
         "Спрятала клавиатуру. Вернуть можно через /menu",
@@ -308,10 +215,10 @@ async def open_server_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     await update.message.reply_text(
-        "Раздел сервера. Тут уже кнопки без шаманства с командами.",
+        "Раздел сервера.",
         reply_markup=get_server_menu_keyboard(),
     )
 
@@ -321,10 +228,10 @@ async def open_windows_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     await update.message.reply_text(
-        "Раздел Windows. Опасные кнопки тут уже пахнут приключениями.",
+        "Раздел Windows.",
         reply_markup=get_windows_menu_keyboard(),
     )
 
@@ -334,7 +241,7 @@ async def open_voice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await deny_access(update)
         return
 
-    clear_awaiting_states(context)
+    clear_transient_states(context)
 
     await update.message.reply_text(
         "Раздел голоса.",
@@ -347,6 +254,7 @@ async def begin_win_open_url_flow(update: Update, context: ContextTypes.DEFAULT_
         await deny_access(update)
         return
 
+    clear_pending_confirmation(context)
     set_awaiting_win_url(context, True)
 
     await update.message.reply_text(
@@ -382,7 +290,7 @@ async def awaiting_menu_input_handler(update: Update, context: ContextTypes.DEFA
         return
 
     if text == BTN_BACK:
-        clear_awaiting_states(context)
+        clear_transient_states(context)
         await update.message.reply_text(
             "Вернула тебя в главное меню.",
             reply_markup=get_main_menu_keyboard(),
@@ -390,7 +298,7 @@ async def awaiting_menu_input_handler(update: Update, context: ContextTypes.DEFA
         return
 
     if text == BTN_HIDE_MENU:
-        clear_awaiting_states(context)
+        clear_transient_states(context)
         await update.message.reply_text(
             "Спрятала клавиатуру. Вернуть можно через /menu",
             reply_markup=ReplyKeyboardRemove(),
@@ -448,7 +356,7 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     if text == BTN_MAIN_CLEAR:
-        clear_awaiting_states(context)
+        clear_transient_states(context)
         await clear_command(update, context)
         await update.message.reply_text(
             "Главное меню снова тут.",
@@ -461,7 +369,7 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     if text == BTN_BACK:
-        clear_awaiting_states(context)
+        clear_transient_states(context)
         await update.message.reply_text(
             "Вернула тебя в главное меню.",
             reply_markup=get_main_menu_keyboard(),
@@ -469,7 +377,19 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     if text == BTN_CANCEL:
-        clear_awaiting_states(context)
+        if has_pending_confirmation(context):
+            await cancel_pending_action(update, context)
+            return
+
+        if is_awaiting_win_url(context):
+            clear_awaiting_states(context)
+            await update.message.reply_text(
+                "Отменила ввод ссылки.",
+                reply_markup=get_windows_menu_keyboard(),
+            )
+            return
+
+        clear_transient_states(context)
         await update.message.reply_text(
             "Окей, отмена.",
             reply_markup=get_main_menu_keyboard(),
@@ -529,13 +449,17 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await ping(update, context)
         return
 
+    if text == BTN_SERVER_REBOOT:
+        await request_server_reboot_confirmation(update, context)
+        return
+
     # WINDOWS
     if text == BTN_WIN_STATUS:
         await win_status_command(update, context)
         return
 
     if text == BTN_WIN_LOCK:
-        await win_lock_command(update, context)
+        await request_win_lock_confirmation(update, context)
         return
 
     if text == BTN_WIN_UNLOCK:
@@ -543,7 +467,7 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     if text == BTN_WIN_LOGOUT:
-        await win_logout_command(update, context)
+        await request_win_logout_confirmation(update, context)
         return
 
     if text == BTN_WIN_SCREENSHOT:
@@ -551,11 +475,11 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     if text == BTN_WIN_SHUTDOWN:
-        await win_shutdown_command(update, context)
+        await request_win_shutdown_confirmation(update, context)
         return
 
     if text == BTN_WIN_REBOOT:
-        await win_reboot_command(update, context)
+        await request_win_reboot_confirmation(update, context)
         return
 
     if text == BTN_WIN_OPEN_URL:
