@@ -84,15 +84,7 @@ def create_bot_app():
     # Голос
     app.add_handler(MessageHandler(filters.VOICE, voice_message))
 
-    # Режимы ожидания ввода из меню должны ловиться раньше всего текстового
-    app.add_handler(
-        MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            awaiting_menu_input_handler,
-        )
-    )
-
-    # Кнопки меню
+    # СНАЧАЛА кнопки меню
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND & filters.Regex(MENU_BUTTON_PATTERN),
@@ -100,7 +92,15 @@ def create_bot_app():
         )
     )
 
-    # Обычный текстовый чат
+    # ПОТОМ режимы ожидания ввода из меню
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            awaiting_menu_input_handler,
+        )
+    )
+
+    # И только потом обычный чат
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_message))
 
     return app
