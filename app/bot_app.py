@@ -2,8 +2,6 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 
 from app.config import BOT_TOKEN
 from app.handlers.command_handlers import (
-    start,
-    help_command,
     clear_command,
     voice_on_command,
     voice_off_command,
@@ -34,17 +32,25 @@ from app.handlers.command_handlers import (
 )
 from app.handlers.chat_handlers import chat_message
 from app.handlers.voice_handlers import voice_message
+from app.handlers.menu_handlers import (
+    MENU_BUTTON_PATTERN,
+    start_with_menu,
+    help_with_menu,
+    menu_command,
+    menu_text_handler,
+)
 
 
 def create_bot_app():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("start", start_with_menu))
+    app.add_handler(CommandHandler("help", help_with_menu))
+    app.add_handler(CommandHandler("menu", menu_command))
+
     app.add_handler(CommandHandler("clear", clear_command))
     app.add_handler(CommandHandler("voice_on", voice_on_command))
     app.add_handler(CommandHandler("voice_off", voice_off_command))
-
     app.add_handler(CommandHandler("ping", ping))
     app.add_handler(CommandHandler("ip", ip_command))
     app.add_handler(CommandHandler("search", search))
@@ -61,7 +67,6 @@ def create_bot_app():
     app.add_handler(CommandHandler("whoami", whoami_command))
     app.add_handler(CommandHandler("reboot", reboot_command))
     app.add_handler(CommandHandler("cancel_reboot", cancel_reboot_command))
-
     app.add_handler(CommandHandler("win_status", win_status_command))
     app.add_handler(CommandHandler("win_lock", win_lock_command))
     app.add_handler(CommandHandler("win_logout", win_logout_command))
@@ -69,8 +74,17 @@ def create_bot_app():
     app.add_handler(CommandHandler("win_reboot", win_reboot_command))
     app.add_handler(CommandHandler("win_screenshot", win_screenshot_command))
     app.add_handler(CommandHandler("win_open_url", win_open_url))
+    app.add_handler(CommandHandler("win_unlock_screen", win_unlock_screen))
 
     app.add_handler(MessageHandler(filters.VOICE, voice_message))
+
+    app.add_handler(
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND & filters.Regex(MENU_BUTTON_PATTERN),
+            menu_text_handler,
+        )
+    )
+
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_message))
-    app.add_handler(CommandHandler("win_unlock_screen", win_unlock_screen))
+
     return app
