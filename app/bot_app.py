@@ -21,6 +21,7 @@ from app.handlers.command_handlers import (
     whoami_command,
     win_status_command,
     win_screenshot_command,
+    win_camera_command,
     win_open_url,
     win_unlock_screen,
 )
@@ -80,10 +81,11 @@ def create_bot_app():
     app.add_handler(CommandHandler("whoami", whoami_command))
     app.add_handler(CommandHandler("win_status", win_status_command))
     app.add_handler(CommandHandler("win_screenshot", win_screenshot_command))
+    app.add_handler(CommandHandler("win_camera", win_camera_command))
     app.add_handler(CommandHandler("win_open_url", win_open_url))
     app.add_handler(CommandHandler("win_unlock_screen", win_unlock_screen))
 
-    # Опасные команды теперь через подтверждение
+    # Опасные команды через подтверждение
     app.add_handler(CommandHandler("reboot", request_server_reboot_confirmation))
     app.add_handler(CommandHandler("win_lock", request_win_lock_confirmation))
     app.add_handler(CommandHandler("win_logout", request_win_logout_confirmation))
@@ -93,7 +95,7 @@ def create_bot_app():
     # Голос
     app.add_handler(MessageHandler(filters.VOICE, voice_message))
 
-    # 1. Сначала кнопки меню
+    # 1. Кнопки меню
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND & filters.Regex(MENU_BUTTON_PATTERN),
@@ -101,7 +103,7 @@ def create_bot_app():
         )
     )
 
-    # 2. Потом подтверждение кодом
+    # 2. Подтверждение кодом
     app.add_handler(
         MessageHandler(
             filters.TEXT
@@ -111,7 +113,7 @@ def create_bot_app():
         )
     )
 
-    # 3. Потом режим ожидания URL
+    # 3. Режим ожидания URL
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
@@ -119,7 +121,7 @@ def create_bot_app():
         )
     )
 
-    # 4. И только потом обычный чат
+    # 4. Обычный чат
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,

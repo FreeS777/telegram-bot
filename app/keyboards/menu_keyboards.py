@@ -33,6 +33,7 @@ BTN_WIN_LOCK = "🔒 Lock"
 BTN_WIN_UNLOCK = "🔓 Unlock"
 BTN_WIN_LOGOUT = "🚪 Logout"
 BTN_WIN_SCREENSHOT = "📷 Скриншот"
+BTN_WIN_CAMERA = "📸 Камера"
 BTN_WIN_SHUTDOWN = "🔌 Shutdown"
 BTN_WIN_REBOOT = "🔄 Reboot"
 BTN_WIN_OPEN_URL = "🌍 Open URL"
@@ -68,6 +69,7 @@ MENU_BUTTONS = [
     BTN_WIN_UNLOCK,
     BTN_WIN_LOGOUT,
     BTN_WIN_SCREENSHOT,
+    BTN_WIN_CAMERA,
     BTN_WIN_SHUTDOWN,
     BTN_WIN_REBOOT,
     BTN_WIN_OPEN_URL,
@@ -115,10 +117,10 @@ def get_windows_menu_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         [
             [BTN_WIN_STATUS, BTN_WIN_SCREENSHOT],
+            [BTN_WIN_CAMERA, BTN_WIN_OPEN_URL],
             [BTN_WIN_LOCK, BTN_WIN_UNLOCK],
             [BTN_WIN_LOGOUT],
             [BTN_WIN_SHUTDOWN, BTN_WIN_REBOOT],
-            [BTN_WIN_OPEN_URL],
             [BTN_BACK, BTN_HIDE_MENU],
         ],
         resize_keyboard=True,

@@ -24,6 +24,7 @@ from app.handlers.command_handlers import (
     whoami_command,
     win_status_command,
     win_screenshot_command,
+    win_camera_command,
     win_open_url,
     win_unlock_screen,
 )
@@ -60,6 +61,7 @@ from app.keyboards.menu_keyboards import (
     BTN_SERVER_WHOAMI,
     BTN_VOICE_OFF,
     BTN_VOICE_ON,
+    BTN_WIN_CAMERA,
     BTN_WIN_LOCK,
     BTN_WIN_LOGOUT,
     BTN_WIN_OPEN_URL,
@@ -74,10 +76,7 @@ from app.keyboards.menu_keyboards import (
     get_voice_menu_keyboard,
     get_windows_menu_keyboard,
 )
-from app.services.confirm_service import (
-    clear_pending_confirmation,
-    has_pending_confirmation,
-)
+from app.services.confirm_service import clear_pending_confirmation, has_pending_confirmation
 
 
 AWAITING_WIN_URL_KEY = "awaiting_win_url"
@@ -135,20 +134,17 @@ async def start_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     text = (
         "Бот запущен и готов к работе.\n\n"
-        "Теперь можно не помнить весь список команд вручную — "
-        "пользуйся кнопками ниже.\n\n"
+        "Теперь можно не помнить весь список команд вручную — пользуйся кнопками ниже.\n\n"
         "Что есть сейчас:\n"
         "• управление сервером\n"
         "• управление Windows-агентом\n"
+        "• скриншот и фото с камеры\n"
         "• голосовые ответы\n"
         "• обычный AI-чат\n\n"
         "Если нужно — напиши /help или открой меню командой /menu."
     )
 
-    await update.message.reply_text(
-        text,
-        reply_markup=get_main_menu_keyboard(),
-    )
+    await update.message.reply_text(text, reply_markup=get_main_menu_keyboard())
 
 
 async def help_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -162,10 +158,10 @@ async def help_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "Главное управление теперь через кнопки 👇\n\n"
         "Что где лежит:\n"
         "• 🖥 Сервер — статус, RAM, диск, процессы, docker, nginx, логи, reboot\n"
-        "• 🪟 Windows — статус агента, скриншот, lock, logout, shutdown, reboot, open url\n"
+        "• 🪟 Windows — статус агента, скриншот, камера, lock, logout, shutdown, reboot, open url\n"
         "• 🎤 Голос — включить или выключить голосовые ответы\n"
         "• 🧠 Очистить память — сброс истории диалога\n\n"
-        "Опасные действия теперь требуют код подтверждения.\n\n"
+        "Опасные действия требуют код подтверждения.\n\n"
         "Старые команды тоже работают.\n"
         "Например:\n"
         "/server\n"
@@ -173,15 +169,12 @@ async def help_with_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "/ram\n"
         "/win_status\n"
         "/win_screenshot\n"
-        "/win_open_url https://youtube.com\n"
-        "/confirm 4821\n\n"
+        "/win_camera\n"
+        "/win_open_url https://youtube.com\n\n"
         "Для открытия меню в любой момент: /menu"
     )
 
-    await update.message.reply_text(
-        text,
-        reply_markup=get_main_menu_keyboard(),
-    )
+    await update.message.reply_text(text, reply_markup=get_main_menu_keyboard())
 
 
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -190,11 +183,7 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     clear_transient_states(context)
-
-    await update.message.reply_text(
-        "Открыла главное меню.",
-        reply_markup=get_main_menu_keyboard(),
-    )
+    await update.message.reply_text("Открыла главное меню.", reply_markup=get_main_menu_keyboard())
 
 
 async def hide_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -203,7 +192,6 @@ async def hide_menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     clear_transient_states(context)
-
     await update.message.reply_text(
         "Спрятала клавиатуру. Вернуть можно через /menu",
         reply_markup=ReplyKeyboardRemove(),
@@ -216,11 +204,7 @@ async def open_server_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     clear_transient_states(context)
-
-    await update.message.reply_text(
-        "Раздел сервера.",
-        reply_markup=get_server_menu_keyboard(),
-    )
+    await update.message.reply_text("Раздел сервера.", reply_markup=get_server_menu_keyboard())
 
 
 async def open_windows_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -229,11 +213,7 @@ async def open_windows_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return
 
     clear_transient_states(context)
-
-    await update.message.reply_text(
-        "Раздел Windows.",
-        reply_markup=get_windows_menu_keyboard(),
-    )
+    await update.message.reply_text("Раздел Windows.", reply_markup=get_windows_menu_keyboard())
 
 
 async def open_voice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -242,11 +222,7 @@ async def open_voice_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     clear_transient_states(context)
-
-    await update.message.reply_text(
-        "Раздел голоса.",
-        reply_markup=get_voice_menu_keyboard(),
-    )
+    await update.message.reply_text("Раздел голоса.", reply_markup=get_voice_menu_keyboard())
 
 
 async def begin_win_open_url_flow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -458,6 +434,18 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await win_status_command(update, context)
         return
 
+    if text == BTN_WIN_SCREENSHOT:
+        await win_screenshot_command(update, context)
+        return
+
+    if text == BTN_WIN_CAMERA:
+        await win_camera_command(update, context)
+        return
+
+    if text == BTN_WIN_OPEN_URL:
+        await begin_win_open_url_flow(update, context)
+        return
+
     if text == BTN_WIN_LOCK:
         await request_win_lock_confirmation(update, context)
         return
@@ -470,20 +458,12 @@ async def menu_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         await request_win_logout_confirmation(update, context)
         return
 
-    if text == BTN_WIN_SCREENSHOT:
-        await win_screenshot_command(update, context)
-        return
-
     if text == BTN_WIN_SHUTDOWN:
         await request_win_shutdown_confirmation(update, context)
         return
 
     if text == BTN_WIN_REBOOT:
         await request_win_reboot_confirmation(update, context)
-        return
-
-    if text == BTN_WIN_OPEN_URL:
-        await begin_win_open_url_flow(update, context)
         return
 
     # VOICE

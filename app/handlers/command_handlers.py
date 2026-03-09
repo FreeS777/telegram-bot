@@ -5,10 +5,15 @@ from telegram.ext import ContextTypes
 from app.security.auth import is_allowed
 from app.services.memory_service import clear_memory, set_voice_mode
 from app.services.system_service import run_command
-from app.services.windows_agent_service import check_windows_agent, send_windows_action
+from app.services.windows_agent_service import (
+    check_windows_agent,
+    get_windows_camera_photo,
+    get_windows_screenshot,
+    open_windows_url,
+    send_windows_action,
+    unlock_windows_screen,
+)
 from app.utils.text_utils import safe_html, truncate
-from app.services.windows_agent_service import get_windows_screenshot, open_windows_url
-from app.services.windows_agent_service import unlock_windows_screen
 
 
 async def deny_access(update: Update) -> None:
@@ -50,9 +55,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "/win_unlock_screen — попытаться снять блокировку экрана\n"
         "/win_logout — выйти из текущей сессии Windows\n"
         "/win_shutdown — выключить Windows ПК\n"
-        "/win_reboot — перезагрузить ПК\n\n"
+        "/win_reboot — перезагрузить ПК\n"
         "/win_screenshot — сделать скриншот Windows\n"
-        "/win_open_url URL — открыть ссылку в браузере Windows\n"
+        "/win_camera — фото с веб-камеры Windows\n"
+        "/win_open_url URL — открыть ссылку в браузере Windows\n\n"
         "Можно писать обычные сообщения и присылать голосовухи."
     )
     await update.message.reply_text(text)
@@ -88,11 +94,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         "/win_status — статус Windows-агента\n"
         "/win_lock — заблокировать экран Windows\n"
         "/win_logout — выйти из Windows\n"
-        "/win_unlock_screen — попытаться снять блокировку Windows\n"        
+        "/win_unlock_screen — попытаться снять блокировку Windows\n"
         "/win_shutdown — выключить ПК\n"
-        "/win_reboot — перезагрузить Windows\n\n"
+        "/win_reboot — перезагрузить Windows\n"
         "/win_screenshot — сделать скриншот экрана Windows\n"
-        "/win_open_url URL — открыть ссылку в браузере Windows\n"
+        "/win_camera — сделать фото с веб-камеры Windows\n"
+        "/win_open_url URL — открыть ссылку в браузере Windows\n\n"
         "Также можно писать обычный текст и присылать voice message."
     )
     await update.message.reply_text(text)
@@ -176,7 +183,7 @@ async def disk_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     output = truncate(run_command("df -h /"))
     await update.message.reply_text(
         f"<b>Диск /</b>\n<pre>{safe_html(output)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -188,7 +195,7 @@ async def ram_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     output = truncate(run_command("free -h"))
     await update.message.reply_text(
         f"<b>Память</b>\n<pre>{safe_html(output)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -222,7 +229,7 @@ async def top_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     output = truncate(run_command(cmd))
     await update.message.reply_text(
         f"<b>Топ процессов по CPU</b>\n<pre>{safe_html(output)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -252,7 +259,7 @@ async def docker_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     output = truncate(run_command("docker ps --format 'table {{.Names}}\\t{{.Image}}\\t{{.Status}}'"))
     await update.message.reply_text(
         f"<b>Docker containers</b>\n<pre>{safe_html(output)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -264,7 +271,7 @@ async def nginx_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     output = truncate(run_command("systemctl status nginx --no-pager -l", timeout=20))
     await update.message.reply_text(
         f"<b>Nginx status</b>\n<pre>{safe_html(output)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -276,7 +283,7 @@ async def logs_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     output = truncate(run_command("journalctl -u telegram-bot -n 30 --no-pager", timeout=20))
     await update.message.reply_text(
         f"<b>Последние логи telegram-bot</b>\n<pre>{safe_html(output)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -343,7 +350,7 @@ async def cancel_reboot_command(update: Update, context: ContextTypes.DEFAULT_TY
     result = run_command("sudo shutdown -c")
     await update.message.reply_text(
         f"Попыталась отменить перезагрузку.\n\n<pre>{safe_html(result)}</pre>",
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -414,24 +421,34 @@ async def win_reboot_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await update.message.reply_text(f"Не смогла выполнить reboot: {e}")
 
-async def win_screenshot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+async def win_screenshot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
         await deny_access(update)
         return
 
     try:
         await update.message.reply_text("Делаю скриншот...")
-
         image = get_windows_screenshot()
-
         await update.message.reply_photo(photo=image)
-
     except Exception as e:
         await update.message.reply_text(f"Не смогла сделать скриншот: {e}")
 
-async def win_open_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+async def win_camera_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_allowed(update):
+        await deny_access(update)
+        return
+
+    try:
+        await update.message.reply_text("Включаю вебку, делаю фото...")
+        image = get_windows_camera_photo()
+        await update.message.reply_photo(photo=image)
+    except Exception as e:
+        await update.message.reply_text(f"Не смогла получить фото с камеры: {e}")
+
+
+async def win_open_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
         await deny_access(update)
         return
@@ -445,12 +462,11 @@ async def win_open_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         open_windows_url(url)
         await update.message.reply_text(f"Открываю: {url}")
-
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {e}")
 
-async def win_unlock_screen(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+async def win_unlock_screen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed(update):
         await deny_access(update)
         return
