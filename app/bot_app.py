@@ -48,6 +48,15 @@ from app.handlers.voice_handlers import voice_message
 from app.keyboards.menu_keyboards import MENU_BUTTON_PATTERN
 
 
+URL_FLOW_PATTERN = (
+    r"^(https?://\S+|"
+    r"[a-zA-Z0-9-]+\.[a-zA-Z]{2,}([/:?#]\S*)?|"
+    r"❌ Отмена|"
+    r"🏠 Главное меню|"
+    r"🙈 Скрыть меню)$"
+)
+
+
 def create_bot_app():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -113,10 +122,10 @@ def create_bot_app():
         )
     )
 
-    # 3. Режим ожидания URL
+    # 3. Только URL-flow, а не вообще весь текст
     app.add_handler(
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
+            filters.TEXT & ~filters.COMMAND & filters.Regex(URL_FLOW_PATTERN),
             awaiting_menu_input_handler,
         )
     )
