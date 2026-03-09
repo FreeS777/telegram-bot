@@ -1,22 +1,25 @@
-import logging
 import subprocess
 
-logger = logging.getLogger(__name__)
 
-
-def run_command(command: str, timeout: int = 15) -> str:
+def run_command(cmd: str, timeout: int = 15) -> str:
     try:
         result = subprocess.run(
-            command,
+            cmd,
             shell=True,
             capture_output=True,
             text=True,
-            timeout=timeout
+            encoding="utf-8",
+            errors="ignore",
+            timeout=timeout,
         )
-        output = result.stdout.strip() or result.stderr.strip()
-        return output if output else "Команда выполнена, но ничего не вернула."
+
+        if result.returncode == 0:
+            return result.stdout.strip()
+
+        return (result.stdout + "\n" + result.stderr).strip()
+
     except subprocess.TimeoutExpired:
-        return "Команда выполнялась слишком долго."
+        return "Команда превысила время выполнения."
+
     except Exception as e:
-        logger.exception("Command failed")
         return f"Ошибка выполнения команды: {e}"

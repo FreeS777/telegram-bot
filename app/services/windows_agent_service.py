@@ -1,24 +1,10 @@
-import io
-import os
 import time
-
 import requests
 
-
-WIN_AGENT_URL = os.getenv("WIN_AGENT_URL", "").rstrip("/")
-WIN_AGENT_TOKEN = os.getenv("WIN_AGENT_TOKEN", "")
-REQUEST_TIMEOUT = int(os.getenv("WIN_AGENT_TIMEOUT", "25"))
-
-
-def _ensure_agent_config() -> None:
-    if not WIN_AGENT_URL:
-        raise RuntimeError("WIN_AGENT_URL is missing in environment")
-    if not WIN_AGENT_TOKEN:
-        raise RuntimeError("WIN_AGENT_TOKEN is missing in environment")
+from app.config import WIN_AGENT_URL, WIN_AGENT_TOKEN
 
 
 def _headers() -> dict:
-    _ensure_agent_config()
     return {
         "X-Agent-Token": WIN_AGENT_TOKEN,
     }
@@ -28,67 +14,68 @@ def check_windows_agent() -> dict:
     response = requests.get(
         f"{WIN_AGENT_URL}/health",
         headers=_headers(),
-        timeout=REQUEST_TIMEOUT,
+        timeout=15,
     )
     response.raise_for_status()
     return response.json()
 
 
 def send_windows_action(action: str) -> dict:
-    payload = {
-        "action": action,
-        "timestamp": int(time.time()),
-    }
-
     response = requests.post(
         f"{WIN_AGENT_URL}/action",
-        json=payload,
         headers=_headers(),
-        timeout=REQUEST_TIMEOUT,
+        json={
+            "action": action,
+            "timestamp": int(time.time()),
+        },
+        timeout=30,
     )
     response.raise_for_status()
     return response.json()
 
 
-def get_windows_screenshot():
+def get_windows_screenshot() -> bytes:
     response = requests.get(
         f"{WIN_AGENT_URL}/screenshot",
         headers=_headers(),
-        timeout=REQUEST_TIMEOUT,
+        timeout=60,
     )
     response.raise_for_status()
 
-    image = io.BytesIO(response.content)
-    image.name = "windows_screenshot.png"
-    image.seek(0)
-    return image
+    content_type = response.headers.get("content-type", "").lower()
+    if "image/" not in content_type:
+        body_preview = response.text[:300] if response.text else "<empty>"
+        raise RuntimeError(
+            f"/screenshot вернул не картинку. content-type={content_type}, body={body_preview}"
+        )
+
+    return response.content
 
 
-def get_windows_camera_photo():
+def get_windows_camera_photo() -> bytes:
     response = requests.get(
         f"{WIN_AGENT_URL}/camera",
         headers=_headers(),
-        timeout=REQUEST_TIMEOUT,
+        timeout=60,
     )
     response.raise_for_status()
 
-    image = io.BytesIO(response.content)
-    image.name = "windows_camera.jpg"
-    image.seek(0)
-    return image
+    content_type = response.headers.get("content-type", "").lower()
+    if "image/" not in content_type:
+        body_preview = response.text[:300] if response.text else "<empty>"
+        raise RuntimeError(
+            f"/camera вернул не картинку. content-type={content_type}, body={body_preview}"
+        )
+
+    return response.content
 
 
 def open_windows_url(url: str) -> dict:
-    payload = {
-        "action": url,
-        "timestamp": int(time.time()),
-    }
-
     response = requests.post(
-        f"{WIN_AGENT_URL}/open_url",
-        json=payload,
+        f"{WIN_AGENT_URL}/open-url",
         headers=_headers(),
-        timeout=REQUEST_TIMEOUT,
+        json={"url": url},
+        timeout=30,
     )
     response.raise_for_status()
     return response.json()
@@ -96,9 +83,9 @@ def open_windows_url(url: str) -> dict:
 
 def unlock_windows_screen() -> dict:
     response = requests.post(
-        f"{WIN_AGENT_URL}/unlock_screen",
+        f"{WIN_AGENT_URL}/unlock-screen",
         headers=_headers(),
-        timeout=REQUEST_TIMEOUT,
+        timeout=30,
     )
     response.raise_for_status()
     return response.json()
